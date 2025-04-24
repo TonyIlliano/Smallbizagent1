@@ -1,68 +1,70 @@
-import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
+import { CalendarIntegration } from '@/components/calendar/CalendarIntegration';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Loader2 } from 'lucide-react';
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+export default function CalendarSettingsPage() {
+  const { user } = useAuth();
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+  // Redirect to auth page if not authenticated
+  useEffect(() => {
+    if (user === null) {
+      window.location.href = '/auth';
+    }
+  }, [user]);
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
+  // Get business data
+  const { data: business, isLoading } = useQuery({
+    queryKey: ['/api/business'],
+    queryFn: async () => {
+      const res = await fetch('/api/business');
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch business data');
+      }
+      
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  // Loading state
+  if (isLoading || !business) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
-      }}
-      {...props}
-    />
-  )
+    <div className="container py-6">
+      <h1 className="text-3xl font-bold mb-6">Settings</h1>
+      
+      <Tabs defaultValue="calendar" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="calendar" className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">Calendar Settings</h2>
+            <p className="text-muted-foreground">
+              Manage your calendar integrations and scheduling preferences
+            </p>
+          </div>
+          
+          <Separator />
+          
+          <CalendarIntegration businessId={business.id} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
-Calendar.displayName = "Calendar"
-
-export { Calendar }
